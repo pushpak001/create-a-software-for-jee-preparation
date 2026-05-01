@@ -271,12 +271,30 @@ app.post('/api/attempts', async (req, res, next) => {
         JSON.stringify(attempt.questions)
       ]
     );
+    const submittedDate = new Date(submittedAt);
+    const resultDate = submittedDate.toISOString().slice(0, 10);
+    const attemptId = attemptRows.insertId;
+
+    await pool.execute(
+      `INSERT INTO student_results
+       (student_id, student_name, result_date, test_code, marks, total_marks, attempt_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [
+        student.id,
+        student.name,
+        resultDate,
+        attempt.testCode,
+        result.score,
+        result.totalMarks,
+        attemptId
+      ]
+    );
 
     await pool.execute(
       `INSERT INTO test_attendance (student_id, test_code, status, attempt_id, marked_at)
        VALUES (?, ?, 'P', ?, ?)
        ON DUPLICATE KEY UPDATE status = 'P', attempt_id = VALUES(attempt_id), marked_at = VALUES(marked_at)`,
-      [student.id, attempt.testCode, attemptRows.insertId, new Date(submittedAt)]
+      [student.id, attempt.testCode, attemptId, submittedDate]
     );
 
     res.json({ saved: true, attempt });
